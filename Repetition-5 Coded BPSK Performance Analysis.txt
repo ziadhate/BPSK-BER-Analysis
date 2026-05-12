@@ -1,0 +1,182 @@
+%-- 5/7/2026 11:05 PM --%
+clc; clear; close all;
+
+N = 110000;              % number of information bits
+Eb = 1;                  % information bit energy
+A = sqrt(Eb);            % BPSK amplitude
+EbN0_dB = -3:10;         % SNR range
+
+rep = 5;                 % repetition factor
+
+% random information bits
+bits = randi([0 1], 1, N);
+
+% =========================================================
+% HARD DECISION DECODING
+% =========================================================
+
+BER_hard_A = zeros(size(EbN0_dB));
+BER_hard_B = zeros(size(EbN0_dB));
+
+% repetition coding
+coded_bits = repelem(bits, rep);
+
+%% ========================================================
+% CASE (a)
+% Same energy per transmitted bit
+% =========================================================
+
+txA = A * (1 - 2*coded_bits);
+
+for k = 1:length(EbN0_dB)
+
+    sigma = sqrt(Eb / (2 * 10^(EbN0_dB(k)/10)));
+
+    % AWGN noise
+    noiseA = sigma * randn(1, length(txA));
+
+    % received signal
+    rxA = txA + noiseA;
+
+    % hard decision
+    hardA = rxA < 0;
+
+    % reshape every 5 bits together
+    hardA = reshape(hardA, rep, []);
+
+    % majority voting
+    bits_hatA = sum(hardA,1) >= 3;
+
+    % BER
+    BER_hard_A(k) = sum(bits ~= bits_hatA) / N;
+
+end
+
+%% ========================================================
+% CASE (b)
+% Same energy per information bit
+% =========================================================
+
+A2 = A / sqrt(rep);
+
+txB = A2 * (1 - 2*coded_bits);
+
+for k = 1:length(EbN0_dB)
+
+    sigma = sqrt(Eb / (2 * 10^(EbN0_dB(k)/10)));
+
+    % AWGN noise
+    noiseB = sigma * randn(1, length(txB));
+
+    % received signal
+    rxB = txB + noiseB;
+
+    % hard decision
+    hardB = rxB < 0;
+
+    % reshape every 5 bits together
+    hardB = reshape(hardB, rep, []);
+
+    % majority voting
+    bits_hatB = sum(hardB,1) >= 3;
+
+    % BER
+    BER_hard_B(k) = sum(bits ~= bits_hatB) / N;
+
+end
+
+% =========================================================
+% SOFT DECISION DECODING
+% =========================================================
+
+BER_soft_A = zeros(size(EbN0_dB));
+BER_soft_B = zeros(size(EbN0_dB));
+
+%% ========================================================
+% CASE (a)
+% Same energy per transmitted bit
+% =========================================================
+
+txA = A * (1 - 2*coded_bits);
+
+for k = 1:length(EbN0_dB)
+
+    sigma = sqrt(Eb / (2 * 10^(EbN0_dB(k)/10)));
+
+    % AWGN noise
+    noiseA = sigma * randn(1, length(txA));
+
+    % received signal
+    rxA = txA + noiseA;
+
+    % reshape every 5 symbols together
+    rxA = reshape(rxA, rep, []);
+
+    % soft decision decoding
+    soft_sumA = sum(rxA,1);
+
+    % final decision
+    bits_hatA = soft_sumA < 0;
+
+    % BER
+    BER_soft_A(k) = sum(bits ~= bits_hatA) / N;
+
+end
+
+%% ========================================================
+% CASE (b)
+% Same energy per information bit
+% =========================================================
+
+txB = A2 * (1 - 2*coded_bits);
+
+for k = 1:length(EbN0_dB)
+
+    sigma = sqrt(Eb / (2 * 10^(EbN0_dB(k)/10)));
+
+    % AWGN noise
+    noiseB = sigma * randn(1, length(txB));
+
+    % received signal
+    rxB = txB + noiseB;
+
+    % reshape every 5 symbols together
+    rxB = reshape(rxB, rep, []);
+
+    % soft decision decoding
+    soft_sumB = sum(rxB,1);
+
+    % final decision
+    bits_hatB = soft_sumB < 0;
+
+    % BER
+    BER_soft_B(k) = sum(bits ~= bits_hatB) / N;
+
+end
+
+% =========================================================
+% Plot
+% =========================================================
+
+figure;
+
+semilogy(EbN0_dB, BER_hard_A, '-o', 'LineWidth', 2);
+hold on;
+
+semilogy(EbN0_dB, BER_hard_B, '-s', 'LineWidth', 2);
+
+semilogy(EbN0_dB, BER_soft_A, '-d', 'LineWidth', 2);
+
+semilogy(EbN0_dB, BER_soft_B, '-^', 'LineWidth', 2);
+
+grid on;
+
+xlabel('E_b/N_0 (dB)');
+ylabel('Bit Error Rate');
+
+title('BPSK with Repetition-5 Coding');
+
+legend('Hard Decision - Same Tx Bit Energy', ...
+       'Hard Decision - Same Info Bit Energy', ...
+       'Soft Decision - Same Tx Bit Energy', ...
+       'Soft Decision - Same Info Bit Energy');

@@ -1,0 +1,52 @@
+%% Bonus 1: BPSK over Rayleigh Channel
+clear; clc; close all;
+
+N = 110000;
+Eb_N0_dB = -3:1:10;
+Eb = 1;
+A = sqrt(Eb);
+
+bits = randi([0 1], 1, N);
+
+BER_BPSK_Rayleigh = zeros(1, length(Eb_N0_dB));
+
+% BPSK Modulation: 0 -> -A, 1 -> +A
+s = (2*bits - 1) * A;
+
+for i = 1:length(Eb_N0_dB)
+
+    EbN0_linear = 10^(Eb_N0_dB(i)/10);
+    sigma = sqrt((Eb/2) / EbN0_linear);
+
+    % Rayleigh fading channel
+    h = (randn(1,N) + 1j*randn(1,N)) / sqrt(2);
+
+    % Complex AWGN noise
+    noise = sigma * (randn(1,N) + 1j*randn(1,N));
+
+    % Received signal
+    r = h .* s + noise;
+
+    % Equalization
+    r_equalized = r ./ h;
+
+    % Hard decision
+    bits_hat = real(r_equalized) > 0;
+
+    % BER calculation
+    BER_BPSK_Rayleigh(i) = sum(bits ~= bits_hat) / N;
+
+end
+
+figure('Color','w');
+semilogy(Eb_N0_dB, BER_BPSK_Rayleigh, 'ro--', 'LineWidth', 2);
+grid on;
+
+xlabel('E_b/N_0 (dB)');
+ylabel('Bit Error Rate (BER)');
+title('Bonus: BPSK over Rayleigh Channel');
+legend('BPSK over Rayleigh');
+
+axis([-3 10 1e-5 1]);
+
+fprintf('Rayleigh Channel Simulation Complete.\n');
