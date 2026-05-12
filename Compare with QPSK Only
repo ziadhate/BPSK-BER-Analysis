@@ -1,0 +1,81 @@
+%% Bonus 2: Compare BPSK with QPSK over AWGN
+clear; clc; close all;
+
+N = 110000;
+Eb_N0_dB = -3:1:10;
+Eb = 1;
+
+bits = randi([0 1], 1, N);
+
+BER_BPSK = zeros(1, length(Eb_N0_dB));
+BER_QPSK = zeros(1, length(Eb_N0_dB));
+
+%% BPSK Modulation
+% Mapping: 0 -> -1, 1 -> +1
+s_bpsk = 2*bits - 1;
+
+for i = 1:length(Eb_N0_dB)
+
+    EbN0_linear = 10^(Eb_N0_dB(i)/10);
+    sigma = sqrt((Eb/2) / EbN0_linear);
+
+    noise = sigma * randn(1, N);
+
+    r_bpsk = s_bpsk + noise;
+
+    bits_hat_bpsk = r_bpsk > 0;
+
+    BER_BPSK(i) = sum(bits ~= bits_hat_bpsk) / N;
+
+end
+
+%% QPSK Modulation
+N_qpsk = 2 * floor(N/2);
+bits_qpsk = bits(1:N_qpsk);
+
+bit_pairs = reshape(bits_qpsk, 2, []).';
+
+% QPSK Mapping
+I = 2*bit_pairs(:,1) - 1;
+Q = 2*bit_pairs(:,2) - 1;
+
+s_qpsk = (I + 1j*Q) / sqrt(2);
+
+for i = 1:length(Eb_N0_dB)
+
+    EbN0_linear = 10^(Eb_N0_dB(i)/10);
+    sigma = sqrt((Eb/2) / EbN0_linear);
+
+    noise = sigma * (randn(size(s_qpsk)) + 1j*randn(size(s_qpsk)));
+
+    r_qpsk = s_qpsk + noise;
+
+    bits_hat_qpsk = zeros(size(bit_pairs));
+
+    bits_hat_qpsk(:,1) = real(r_qpsk) > 0;
+    bits_hat_qpsk(:,2) = imag(r_qpsk) > 0;
+
+    bits_hat_qpsk = reshape(bits_hat_qpsk.', 1, []);
+
+    BER_QPSK(i) = sum(bits_qpsk ~= bits_hat_qpsk) / N_qpsk;
+
+end
+
+figure('Color','w');
+
+semilogy(Eb_N0_dB, BER_BPSK, 'bo--', 'LineWidth', 2);
+hold on;
+
+semilogy(Eb_N0_dB, BER_QPSK, 'rs--', 'LineWidth', 2);
+
+grid on;
+
+xlabel('E_b/N_0 (dB)');
+ylabel('Bit Error Rate (BER)');
+title('Bonus: BPSK vs QPSK over AWGN');
+
+legend('BPSK over AWGN', 'QPSK over AWGN');
+
+axis([-3 10 1e-5 1]);
+
+fprintf('BPSK and QPSK Comparison Complete.\n');
